@@ -7,10 +7,7 @@ import be.maximvdw.qaplugin.api.ai.Context;
 import be.maximvdw.qaplugin.api.ai.Intent;
 import be.maximvdw.qaplugin.api.ai.IntentResponse;
 import be.maximvdw.qaplugin.api.ai.IntentTemplate;
-import be.maximvdw.qaplugin.api.annotations.ModuleAuthor;
-import be.maximvdw.qaplugin.api.annotations.ModuleDescription;
-import be.maximvdw.qaplugin.api.annotations.ModuleName;
-import be.maximvdw.qaplugin.api.annotations.ModuleVersion;
+import be.maximvdw.qaplugin.api.annotations.*;
 import be.maximvdw.qaplugin.api.exceptions.FeatureNotEnabled;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -29,11 +26,28 @@ import java.util.Random;
  * Created by maxim on 31-Dec-16.
  */
 @ModuleName("UrbanDictionary")
+@ModuleActionName("urbandictionary")
 @ModuleAuthor("Maximvdw")
-@ModuleVersion("1.1.0")
+@ModuleVersion("1.3.0")
 @ModuleDescription("Search on urban dictionary")
+@ModuleConstraints({
+        @ModuleConstraint(type = ModuleConstraint.ContraintType.QAPLUGIN_VERSION, value = "1.9.0")
+})
+@ModuleScreenshots({
+        "http://i.mvdw-software.com/2016-12-31_00-40-10.png",
+        "http://i.mvdw-software.com/2016-12-31_00-43-52.png",
+        "http://i.mvdw-software.com/2017-01-17_14-58-06.png",
+        "http://i.mvdw-software.com/2016-12-31_00-52-22.png",
+        "http://i.mvdw-software.com/2017-01-17_14-57-36.png"
+})
+@ModulePermalink("")
 public class UrbanDictionaryModule extends AIModule {
     public UrbanDictionaryModule() {
+
+    }
+
+    @Override
+    public void onEnable() {
         Intent question = new Intent("QAPlugin-module-urbandictionary")
                 .addTemplate(new IntentTemplate()
                         .addPart("who is ")
@@ -83,6 +97,40 @@ public class UrbanDictionaryModule extends AIModule {
                                 .addSpeechText("I'm clueless here ...")
                                 .addSpeechText("Not sure what that means")))
                 .withPriority(Intent.Priority.LOW);
+        Intent questionLikes = new Intent("QAPlugin-module-urbandictionary.thumbs_up")
+                .addContext("urbandictionary")
+                .addTemplate("how many likes does it have?")
+                .addTemplate("how many thumbs up does it have?")
+                .addResponse(new IntentResponse()
+                        .addMessage(new IntentResponse.TextResponse()
+                                .addSpeechText("It has {#urbandictionary.thumbs_up} upvotes!")
+                                .addSpeechText("It has {#urbandictionary.thumbs_up} thumbs up")
+                                .addSpeechText("{#urbandictionary.thumbs_up} upvoted that definition")
+                                .addSpeechText("It has {#urbandictionary.thumbs_up} likes")
+                                .addSpeechText("{#urbandictionary.thumbs_up} people liked it")));
+        Intent questionDownvotes = new Intent("QAPlugin-module-urbandictionary.thumbs_down")
+                .addContext("urbandictionary")
+                .addTemplate("how many down votes does it have?")
+                .addTemplate("how many thumbs down does it have?")
+                .addResponse(new IntentResponse()
+                        .addMessage(new IntentResponse.TextResponse()
+                                .addSpeechText("It has {#urbandictionary.thumbs_down} down votes")
+                                .addSpeechText("It has {#urbandictionary.thumbs_down} thumbs up")
+                                .addSpeechText("{#urbandictionary.thumbs_down} down voted that definition")
+                                .addSpeechText("It has {#urbandictionary.thumbs_down} likes")
+                                .addSpeechText("{#urbandictionary.thumbs_down} people down voted it")));
+        Intent questionAuthor = new Intent("QAPlugin-module-urbandictionary.author")
+                .addContext("urbandictionary")
+                .addTemplate("who wrote that?")
+                .addTemplate("who wrote that definition?")
+                .addTemplate("who is the author of that definition?")
+                .addResponse(new IntentResponse()
+                        .addMessage(new IntentResponse.TextResponse()
+                                .addSpeechText("It was made by {#urbandictionary.author}")
+                                .addSpeechText("It was made by {#urbandictionary.author}!")
+                                .addSpeechText("The author is {#urbandictionary.author}")
+                                .addSpeechText("{#urbandictionary.author} wrote it")
+                                .addSpeechText("{#urbandictionary.author} wrote it ...")));
 
         try {
             // Upload the intents
@@ -91,9 +139,25 @@ public class UrbanDictionaryModule extends AIModule {
                     warning("Unable to upload intent!");
                 }
             }
+            if (QAPluginAPI.findIntentByName(questionDownvotes.getName()) == null) {
+                if (!QAPluginAPI.uploadIntent(questionDownvotes)) {
+                    warning("Unable to upload intent!");
+                }
+            }
+            if (QAPluginAPI.findIntentByName(questionLikes.getName()) == null) {
+                if (!QAPluginAPI.uploadIntent(questionLikes)) {
+                    warning("Unable to upload intent!");
+                }
+            }
+            if (QAPluginAPI.findIntentByName(questionAuthor.getName()) == null) {
+                if (!QAPluginAPI.uploadIntent(questionAuthor)) {
+                    warning("Unable to upload intent!");
+                }
+            }
         } catch (FeatureNotEnabled ex) {
             severe("You do not have a developer access token in your QAPlugin config!");
         }
+
     }
 
     public String getResponse(AIQuestionEvent event) {
@@ -110,11 +174,18 @@ public class UrbanDictionaryModule extends AIModule {
                     definition = definition.substring(0, 250) + " ...";
                 }
                 Context udc = new Context("urbandictionary", 1);
+                udc.addParameter("query", answer.getQuery());
+                udc.addParameter("permalink", answer.getPermalink());
+                udc.addParameter("author", answer.getAuthor());
+                udc.addParameter("thumbs_up", String.valueOf(answer.getThumbsUp()));
+                udc.addParameter("thumbs_down", String.valueOf(answer.getThumbsDown()));
                 addContext(udc, event.getPlayer());
                 return definition;
             }
         } catch (Exception ex) {
             // Error
+            ex.printStackTrace();
+            ;
             return ((IntentResponse.TextResponse) event.getDefaultResponses().get(0)).getSpeechTexts().get(0);
         }
     }
@@ -126,6 +197,7 @@ public class UrbanDictionaryModule extends AIModule {
         JSONObject object = (JSONObject) parser.parse(source);
         JSONArray list = (JSONArray) object.get("list");
         int amount = list.size();
+        info("Found " + amount + " possible results on urbandictionar for: " + query);
         if (amount == 0) {
             return null;
         }
@@ -133,6 +205,7 @@ public class UrbanDictionaryModule extends AIModule {
         int idx = random.nextInt(amount);
         JSONObject response = (JSONObject) list.get(idx);
         UrbanDictionaryResult result = new UrbanDictionaryResult(response);
+        result.setQuery(query);
         return result;
     }
 
@@ -165,19 +238,20 @@ public class UrbanDictionaryModule extends AIModule {
 
     class UrbanDictionaryResult {
         private String definition = "";
-        private int thumbsUp = 0;
-        private int thumbsDown = 0;
+        private Long thumbsUp = 0L;
+        private Long thumbsDown = 0L;
         private String example = "";
         private String author = "";
         private String permalink = "";
+        private String query = "";
 
         public UrbanDictionaryResult(JSONObject object) {
             definition = (String) object.get("definition");
             author = (String) object.get("author");
             example = (String) object.get("example");
             permalink = (String) object.get("permalink");
-            thumbsDown = (Integer) object.get("thumbs_down");
-            thumbsUp = (Integer) object.get("thumbs_up");
+            thumbsDown = (Long) object.get("thumbs_down");
+            thumbsUp = (Long) object.get("thumbs_up");
         }
 
         public String getDefinition() {
@@ -188,19 +262,19 @@ public class UrbanDictionaryModule extends AIModule {
             this.definition = definition;
         }
 
-        public int getThumbsUp() {
+        public Long getThumbsUp() {
             return thumbsUp;
         }
 
-        public void setThumbsUp(int thumbsUp) {
+        public void setThumbsUp(Long thumbsUp) {
             this.thumbsUp = thumbsUp;
         }
 
-        public int getThumbsDown() {
+        public Long getThumbsDown() {
             return thumbsDown;
         }
 
-        public void setThumbsDown(int thumbsDown) {
+        public void setThumbsDown(Long thumbsDown) {
             this.thumbsDown = thumbsDown;
         }
 
@@ -226,6 +300,14 @@ public class UrbanDictionaryModule extends AIModule {
 
         public void setPermalink(String permalink) {
             this.permalink = permalink;
+        }
+
+        public String getQuery() {
+            return query;
+        }
+
+        public void setQuery(String query) {
+            this.query = query;
         }
     }
 }
