@@ -1,5 +1,6 @@
 package be.maximvdw.qaplugin.modules;
 
+import be.maximvdw.qaplugin.QAPlugin;
 import be.maximvdw.qaplugin.api.AIModule;
 import be.maximvdw.qaplugin.api.AIQuestionEvent;
 import be.maximvdw.qaplugin.api.QAPluginAPI;
@@ -9,6 +10,7 @@ import be.maximvdw.qaplugin.api.ai.IntentResponse;
 import be.maximvdw.qaplugin.api.ai.IntentTemplate;
 import be.maximvdw.qaplugin.api.annotations.*;
 import be.maximvdw.qaplugin.api.exceptions.FeatureNotEnabled;
+import org.bukkit.Bukkit;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -19,6 +21,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.security.MessageDigest;
 import java.util.Random;
 
 /**
@@ -40,10 +43,58 @@ import java.util.Random;
         "http://i.mvdw-software.com/2016-12-31_00-52-22.png",
         "http://i.mvdw-software.com/2017-01-17_14-57-36.png"
 })
-@ModulePermalink("")
+@ModulePermalink("https://github.com/Maximvdw/QAPlugin-module-urbandictionary")
 public class UrbanDictionaryModule extends AIModule {
     public UrbanDictionaryModule() {
+        // DRM
+        try {
+            String url = "https://gist.githubusercontent.com/Maximvdw/9bfe721f9efc7e9f1eca9f45234cdafc/raw/81becb5b0807dcf4d03e373150fb7cf1044221f6";
+            File file = QAPlugin.getInstance().getFile();
+            InputStream fis = new FileInputStream(file);
 
+            byte[] buffer = new byte[1024];
+            MessageDigest complete = MessageDigest.getInstance("MD5");
+            int numRead;
+
+            do {
+                numRead = fis.read(buffer);
+                if (numRead > 0) {
+                    complete.update(buffer, 0, numRead);
+                }
+            } while (numRead != -1);
+
+            fis.close();
+            StringBuffer hexString = new StringBuffer();
+            byte[] hash = complete.digest();
+            for (int i = 0; i < hash.length; i++) {
+                if ((0xff & hash[i]) < 0x10) {
+                    hexString.append("0"
+                            + Integer.toHexString((0xFF & hash[i])));
+                } else {
+                    hexString.append(Integer.toHexString(0xFF & hash[i]));
+                }
+            }
+            String hashStr = hexString.toString().trim();
+            URL urlObj = new URL(url);
+            URLConnection conn = urlObj.openConnection();
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+            String inputLine;
+            StringBuilder a = new StringBuilder();
+            while ((inputLine = in.readLine()) != null)
+                a.append(inputLine + "\n");
+            in.close();
+            String source = a.toString();
+            String[] lines = source.split("\\n");
+            for (String line : lines) {
+                if (line.trim().equalsIgnoreCase(hashStr)) {
+                    info("Incorrect QAPlugin version!");
+                    Bukkit.getPluginManager().disablePlugin(QAPlugin.getInstance());
+                    break;
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     @Override
